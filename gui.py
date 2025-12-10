@@ -91,7 +91,7 @@ except ImportError:
     print("安装命令: pip3 install PyQt5")
     sys.exit(1)
 
-APP_VERSION = "1.4"
+APP_VERSION = "1.3"
 APP_TITLE = f"ECH Workers 客户端 v{APP_VERSION}"
 
 # 中国IP列表文件名（离线版本，放在程序目录）
@@ -407,19 +407,52 @@ class MainWindow(QMainWindow):
         base_width = 950
         base_height = 800
         
-        if sys.platform == 'win32':
+        # 获取可用屏幕区域（排除任务栏）
+        try:
+            # 方法1: 使用 QApplication.desktop() (PyQt5 推荐方式)
             try:
-                from ctypes import windll
-                # 获取系统 DPI（用于调试信息）
-                hdc = windll.user32.GetDC(0)
-                dpi = windll.gdi32.GetDeviceCaps(hdc, 88)  # LOGPIXELSX
-                windll.user32.ReleaseDC(0, hdc)
-                # PyQt5 会自动处理缩放，这里只是记录 DPI 信息
-                # 窗口大小使用逻辑像素，PyQt5 会自动转换
+                desktop = QApplication.desktop()
+                available_geometry = desktop.availableGeometry()
+                screen_width = available_geometry.width()
+                screen_height = available_geometry.height()
+                screen_x = available_geometry.x()
+                screen_y = available_geometry.y()
             except:
-                pass
-        
-        self.setGeometry(100, 100, base_width, base_height)
+                # 方法2: 使用 QScreen (如果 desktop() 不可用)
+                try:
+                    screen = QApplication.primaryScreen()
+                    available_geometry = screen.availableGeometry()
+                    screen_width = available_geometry.width()
+                    screen_height = available_geometry.height()
+                    screen_x = available_geometry.x()
+                    screen_y = available_geometry.y()
+                except:
+                    # 如果都失败，使用默认值
+                    screen_width = 1920
+                    screen_height = 1080
+                    screen_x = 0
+                    screen_y = 0
+            
+            # 确保窗口大小不超过可用区域
+            if base_width > screen_width:
+                base_width = screen_width - 40  # 留出边距
+            if base_height > screen_height:
+                base_height = screen_height - 40  # 留出边距，确保不遮挡任务栏
+            
+            # 计算居中位置
+            x = screen_x + (screen_width - base_width) // 2
+            y = screen_y + (screen_height - base_height) // 2
+            
+            # 确保窗口不会超出屏幕边界
+            if x < screen_x:
+                x = screen_x + 20
+            if y < screen_y:
+                y = screen_y + 20
+            
+            self.setGeometry(x, y, base_width, base_height)
+        except:
+            # 如果获取屏幕信息失败，使用默认位置
+            self.setGeometry(100, 100, base_width, base_height)
         
         # 设置窗口图标（黑客帝国风格）
         self.setWindowIcon(self._create_matrix_icon())
@@ -1232,13 +1265,13 @@ class MainWindow(QMainWindow):
             }
         
         # 创建副本并更新为界面当前值
-        server = server.copy()
-        server['server'] = self.server_edit.text()
-        server['listen'] = self.listen_edit.text()
-        server['token'] = self.token_edit.text()
-        server['ip'] = self.ip_edit.text()
-        server['dns'] = self.dns_edit.text()
-        server['ech'] = self.ech_edit.text()
+            server = server.copy()
+            server['server'] = self.server_edit.text()
+            server['listen'] = self.listen_edit.text()
+            server['token'] = self.token_edit.text()
+            server['ip'] = self.ip_edit.text()
+            server['dns'] = self.dns_edit.text()
+            server['ech'] = self.ech_edit.text()
         # 保存分流模式
         routing_mode = self.routing_combo.currentData()
         if routing_mode:
